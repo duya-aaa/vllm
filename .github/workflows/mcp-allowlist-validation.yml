@@ -1,0 +1,32 @@
+name: MCP allowlist CPU validation
+
+on:
+  push:
+    branches: [validation/mcp-allowlist-cpu]
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      VLLM_CPU_KVCACHE_SPACE: '1'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 3
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+        with:
+          python-version: '3.12'
+      - name: Install matching CPU wheel and test dependencies
+        run: |
+          uv venv
+          uv pip install 'https://wheels.vllm.ai/be47189f37f6162991366ff6b91539f6e9d1f432/vllm-0.34.0rc1.dev302%2Bgbe47189f3.cpu-cp38-abi3-manylinux_2_39_x86_64.whl' --torch-backend cpu
+          uv pip install pytest pytest-asyncio tblib httpx[http2]
+          echo "LD_PRELOAD=$(find .venv -name libiomp5.so -print -quit)" >> "$GITHUB_ENV"
+      - name: Verify baseline failure then fixed behavior
+        run: |
+          .venv/bin/python .github/scripts/validate_mcp_allowlist.py
