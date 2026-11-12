@@ -21,7 +21,7 @@ jobs:
           uv venv
           uv pip install -r requirements/lint.txt
           .venv/bin/pre-commit install
-          .venv/bin/pre-commit run --files vllm/entrypoints/openai/responses/context.py tests/entrypoints/openai/responses/test_serving_responses.py tests/entrypoints/openai/responses/test_mcp_tools.py docs/usage/security.md
+          .venv/bin/pre-commit run --files vllm/entrypoints/openai/responses/context.py vllm/entrypoints/openai/responses/protocol.py vllm/entrypoints/openai/responses/serving.py tests/entrypoints/openai/responses/test_serving_responses.py tests/entrypoints/openai/responses/test_mcp_tools.py docs/usage/security.md
   regression:
     runs-on: ubuntu-24.04
     timeout-minutes: 30

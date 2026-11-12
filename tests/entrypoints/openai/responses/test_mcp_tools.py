@@ -7,6 +7,7 @@ from __future__ import annotations
 import socket
 import threading
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -92,8 +93,8 @@ def test_mcp_allowlist_rejects_model_generated_call() -> None:
                 "VLLM_GPT_OSS_SYSTEM_TOOL_MCP_LABELS": "code_interpreter",
             }
             with RemoteOpenAIServer(model, args, env_dict=env) as server:
-                client = server.get_client()
-                tools = [
+                client = server.get_client(max_retries=0)
+                tools: list[dict[str, Any]] = [
                     {
                         "type": "mcp",
                         "server_label": "code_interpreter",

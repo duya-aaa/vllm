@@ -12,11 +12,20 @@ BASE = "be47189f37f6162991366ff6b91539f6e9d1f432"
 repo = Path(__file__).resolve().parents[2]
 package = Path(vllm.__file__).resolve().parent
 assert package != repo / "vllm", package
-target = package / "entrypoints/openai/responses/context.py"
-relative = "vllm/entrypoints/openai/responses/context.py"
-baseline = subprocess.check_output(["git", "show", f"{BASE}:{relative}"], cwd=repo)
-assert target.read_bytes() == baseline, "Wheel does not match baseline context.py"
-fixed = (repo / relative).read_bytes()
+sources = {}
+for name in ("context.py", "protocol.py", "serving.py"):
+    relative = f"vllm/entrypoints/openai/responses/{name}"
+    target = package / "entrypoints/openai/responses" / name
+    baseline = subprocess.check_output(["git", "show", f"{BASE}:{relative}"], cwd=repo)
+    assert target.read_bytes() == baseline, f"Wheel does not match {relative}"
+    sources[target] = {"baseline": baseline, "fixed": (repo / relative).read_bytes()}
+
+
+def install_sources(label: str) -> None:
+    for target, versions in sources.items():
+        target.write_bytes(versions[label])
+        for cache in target.parent.glob(f"__pycache__/{target.stem}.*.pyc"):
+            cache.unlink()
 
 with tempfile.TemporaryDirectory() as directory:
     runner = Path(directory) / "run_tests.py"
@@ -28,10 +37,8 @@ with tempfile.TemporaryDirectory() as directory:
     )
     test = repo / "tests/entrypoints/openai/responses/test_serving_responses.py"
     try:
-        for label, source in (("baseline", baseline), ("fixed", fixed)):
-            target.write_bytes(source)
-            for cache in target.parent.glob("__pycache__/context.*.pyc"):
-                cache.unlink()
+        for label in ("baseline", "fixed"):
+            install_sources(label)
             report = Path(directory) / f"{label}.xml"
             command = [
                 sys.executable, str(runner), str(test),
@@ -53,10 +60,8 @@ with tempfile.TemporaryDirectory() as directory:
                 assert result.returncode == 0
                 assert not failures
         test = repo / "tests/entrypoints/openai/responses/test_mcp_tools.py"
-        for label, source in (("baseline", baseline), ("fixed", fixed)):
-            target.write_bytes(source)
-            for cache in target.parent.glob("__pycache__/context.*.pyc"):
-                cache.unlink()
+        for label in ("baseline", "fixed"):
+            install_sources(label)
             report = Path(directory) / f"{label}-e2e.xml"
             command = [
                 sys.executable, str(runner),
@@ -77,4 +82,4 @@ with tempfile.TemporaryDirectory() as directory:
                 assert result.returncode == 0
                 assert not failures
     finally:
-        target.write_bytes(baseline)
+        install_sources("baseline")
