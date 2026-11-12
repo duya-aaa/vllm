@@ -52,5 +52,29 @@ with tempfile.TemporaryDirectory() as directory:
             else:
                 assert result.returncode == 0
                 assert not failures
+        test = repo / "tests/entrypoints/openai/responses/test_mcp_tools.py"
+        for label, source in (("baseline", baseline), ("fixed", fixed)):
+            target.write_bytes(source)
+            for cache in target.parent.glob("__pycache__/context.*.pyc"):
+                cache.unlink()
+            report = Path(directory) / f"{label}-e2e.xml"
+            command = [
+                sys.executable, str(runner),
+                f"{test}::test_mcp_allowlist_rejects_model_generated_call",
+                "-v", "-s", "--tb=short", f"--junitxml={report}",
+            ]
+            print(f"=== E2E {label}: {' '.join(command)} ===", flush=True)
+            result = subprocess.run(command, cwd=directory, check=False)
+            suites = ElementTree.parse(report).getroot()
+            assert len(suites.findall(".//testcase")) == 1
+            assert not suites.findall(".//error")
+            failures = suites.findall(".//failure")
+            if label == "baseline":
+                assert result.returncode == 1
+                assert len(failures) == 1
+                assert "DID NOT RAISE" in failures[0].get("message", "")
+            else:
+                assert result.returncode == 0
+                assert not failures
     finally:
         target.write_bytes(baseline)
