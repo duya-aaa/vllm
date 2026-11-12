@@ -93,7 +93,7 @@ def test_mcp_allowlist_rejects_model_generated_call() -> None:
                 "VLLM_GPT_OSS_SYSTEM_TOOL_MCP_LABELS": "code_interpreter",
             }
             with RemoteOpenAIServer(model, args, env_dict=env) as server:
-                client = server.get_client(max_retries=0)
+                client = server.get_client().with_options(max_retries=0)
                 tools: list[dict[str, Any]] = [
                     {
                         "type": "mcp",

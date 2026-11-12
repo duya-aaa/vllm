@@ -81,5 +81,13 @@ with tempfile.TemporaryDirectory() as directory:
             else:
                 assert result.returncode == 0
                 assert not failures
+        command = [
+            sys.executable, str(runner), "-q",
+            str(repo / "tests/entrypoints/openai/responses/test_serving_responses.py"),
+            str(repo / "tests/entrypoints/openai/responses/test_protocol.py"),
+            str(repo / "tests/entrypoints/openai/responses/test_parsable_context_unit.py"),
+        ]
+        print(f"=== Related suites: {' '.join(command)} ===", flush=True)
+        subprocess.run(command, cwd=directory, check=True)
     finally:
         install_sources("baseline")
